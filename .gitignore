@@ -1,0 +1,9 @@
+.vscode/launch.json
+
+.alpackages/
+
+*.app
+
+.snapshots/
+rad.json
+*.g.xlf
