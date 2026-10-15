@@ -8,6 +8,18 @@ table 50100 "Sample Request Header"
         {
             DataClassification = CustomerContent;
             Caption = 'No.';
+
+            trigger OnValidate()
+            var
+                SampleRequestSetup: Record "Sample Request Setup";
+                NoSeries: Codeunit "No. Series";
+            begin
+                if "No." <> xRec."No." then begin
+                    SampleRequestSetup.Get();
+                    NoSeries.TestManual(SampleRequestSetup."Sample Request Nos.");
+                    "No. Series" := '';
+                end;
+            end;
         }
         field(2; "Customer No."; Code[20])
         {
@@ -18,15 +30,22 @@ table 50100 "Sample Request Header"
             trigger OnValidate()
             var
                 CustomerRec: Record Customer;
-                Text001: Label 'Customer is blocked with status %1.';
+                SampleRequestLine: Record "Sample Request Line";
+                CustomerBlockedErr: Label 'Customer is blocked with status %1.', Comment = '%1 = blocked status';
             begin
+                if "Customer No." <> xRec."Customer No." then begin
+                    SampleRequestLine.SetRange("Document No.", "No.");
+                    if not SampleRequestLine.IsEmpty() then
+                        Error('');
+                end;
+
                 if "Customer No." = '' then begin
                     "Customer Name" := '';
                     exit;
                 end;
                 CustomerRec.Get("Customer No.");
                 if CustomerRec.Blocked <> CustomerRec.Blocked::" " then
-                    Error(Text001, CustomerRec.Blocked);
+                    Error(CustomerBlockedErr, CustomerRec.Blocked);
                 "Customer Name" := CustomerRec.Name;
             end;
         }
@@ -46,7 +65,7 @@ table 50100 "Sample Request Header"
             var
                 MailMngt: Codeunit "Mail Management";
             begin
-                if "Contact Email" <> '' then
+                if "Contact Email" = '' then
                     exit;
                 MailMngt.ValidateEmailAddressField("Contact Email");
             end;
@@ -97,10 +116,10 @@ table 50100 "Sample Request Header"
             DataClassification = CustomerContent;
             Caption = 'Tracking No.';
         }
-        field(13; "Shipping Date"; Date)
+        field(13; "Shipped Date"; Date)
         {
             DataClassification = CustomerContent;
-            Caption = 'Shipping Date';
+            Caption = 'Shipped Date';
             Editable = false;
         }
         field(14; "No. Series"; Code[20])
@@ -108,6 +127,13 @@ table 50100 "Sample Request Header"
             DataClassification = CustomerContent;
             Caption = 'No. Series';
             TableRelation = "No. Series";
+            Editable = false;
+        }
+        field(15; "Total Amount"; Decimal)
+        {
+            Caption = 'Total Amount';
+            FieldClass = FlowField;
+            CalcFormula = Sum("Sample Request Line"."Line Amount" where("Document No." = field("No.")));
             Editable = false;
         }
 
@@ -120,22 +146,36 @@ table 50100 "Sample Request Header"
             Clustered = true;
         }
     }
-
-    fieldgroups
-    {
-        // Add changes to field groups here
-    }
-
+    procedure AssistEdit(OldSampleRequest: Record "Sample Request Header"): Boolean
     var
-        myInt: Integer;
+        SampleRequest: Record "Sample Request Header";
+        SampleRequestSetup: Record "Sample Request Setup";
+        NoSeries: Codeunit "No. Series";
+    begin
+        SampleRequest := Rec;
+        SampleRequestSetup.Get();
+        SampleRequestSetup.TestField("Sample Request Nos.");
+        if NoSeries.LookupRelatedNoSeries(SampleRequestSetup."Sample Request Nos.", OldSampleRequest."No. Series", SampleRequest."No. Series") then begin
+            SampleRequest."No." := NoSeries.GetNextNo(SampleRequest."No. Series");
+            Rec := SampleRequest;
+            exit(true);
+        end;
+    end;
 
     trigger OnInsert()
     var
-        SampleRequestStatus: Enum "Sample Request Status";
+        SampleRequestSetup: Record "Sample Request Setup";
+        NoSeries: Codeunit "No. Series";
     begin
-        "Request Date" := WorkDate();
-        "Requested By" := UserId();
+        if "No." = '' then begin
+            SampleRequestSetup.Get();
+            SAmpleRequestSetup.TestField("Sample Request Nos.");
+            "No. Series" := SampleRequestSetup."Sample Request Nos.";
+            "No." := NoSeries.GetNextNo("No. Series");
+        end;
 
+        "Request Date" := WorkDate();
+        "Requested By" := CopyStr(UserId(), 1, MaxStrLen("Requested By"));
     end;
 
 
