@@ -83,13 +83,32 @@ codeunit 50100 "Sample Request Mgt."
             Error(TooManyRequestsErr, SampleRequest."Customer No.", RequestCount, StartPeriod, SampleRequestSetup."Max. Requests per Period");
     end;
 
+    procedure CheckApprovalLimit(var SampleRequest: Record "Sample Request Header")
+    var
+        UserSetup: Record "User Setup";
+        ApprovalLimit: Decimal;
+    begin
+        if UserSetup.Get(UserId()) then
+            ApprovalLimit := UserSetup."Sample Approval Limit";
+        SampleRequest.CalcFields("Total Amount");
+
+        if SampleRequest."Total Amount" <= ApprovalLimit then begin
+            SampleRequest.Status := SampleRequest.Status::Approved;
+            SampleRequest."Approved By" := CopyStr(UserId(), 1, MaxStrLen(SampleRequest."Approved By"));
+            SampleRequest."Approved Date" := WorkDate();
+        end else
+            SampleRequest.Status := SampleRequest.Status::"Pending Approval";
+
+    end;
 
     procedure Submit(var SampleRequest: Record "Sample Request Header")
     begin
-        SampleRequest.TestField(Status, SampleRequest.Status);
+        SampleRequest.TestField(Status, SampleRequest.Status::Open);
         SampleRequest.TestField("Customer No.");
         CheckNotBlockedCustomer(SampleRequest."Customer No.");
         CheckLines(SampleRequest);
         CheckMaxRequestsPerPeriod(SampleRequest);
+        CheckApprovalLimit(SampleRequest);
+        SampleRequest.Modify(true);
     end;
 }

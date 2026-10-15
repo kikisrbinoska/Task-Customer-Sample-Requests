@@ -59,19 +59,10 @@ table 50101 "Sample Request Line"
 
             trigger OnValidate()
             var
-                MaxQty: Decimal;
-                QtyMustBePositiveErr: Label 'Quantity must be greater than 0.';
-                QtyExceedsMaxErr: Label 'Quantity cannot be more than %1 for item %2.', Comment = '%1 = maximum quantity, %2 = item no.';
-            begin
-                if Quantity <= 0 then
-                    Error(QtyMustBePositiveErr);
-
-                if "Item No." <> '' then begin
-                    MaxQty := GetMaxSampleQty();
-                    if (MaxQty > 0) and (Quantity > MaxQty) then
-                        Error(QtyExceedsMaxErr, MaxQty, "Item No.");
-                end;
-
+                SampleRequestMgt: Codeunit "Sample Request Mgt.";
+=            begin
+                if "Item No." <> '' then
+                    SampleRequestMgt.CheckQuantity("Item No.", Quantity);
                 UpdateLineAmount();
             end;
         }
@@ -102,17 +93,7 @@ table 50101 "Sample Request Line"
         "Line Amount" := Round(Quantity * "Unit Price");
     end;
 
-    local procedure GetMaxSampleQty(): Decimal
-    var
-        ItemRec: Record Item;
-        SampleRequestSetup: Record "Sample Request Setup";
-    begin
-        ItemRec.Get("Item No.");
-        if ItemRec."Max. Sample Qty." <> 0 then
-            exit(ItemRec."Max. Sample Qty.");
-        SampleRequestSetup.Get();
-        exit(SampleRequestSetup."Default Max. Sample Qty.");
-    end;
+
 
 
 
