@@ -101,6 +101,79 @@ codeunit 50100 "Sample Request Mgt."
 
     end;
 
+    procedure CheckApprovalLevel(var SampleRequest: Record "Sample Request Header")
+    begin
+        if SampleRequest.Status <> SampleRequest.Status::"Pending Approval" then
+            Error('Only requests with status Pending Approval can be approved or rejected. The current status is %1.', SampleRequest.Status);
+    end;
+
+    procedure CheckLimit(var SampleRequest: Record "Sample Request Header")
+    var
+        UserSetup: Record "User Setup";
+        ApprovalLimit: Decimal;
+    begin
+        if UserSetup.Get(UserId()) then
+            ApprovalLimit := UserSetup."Sample Approval Limit";
+        SampleRequest.CalcFields("Total Amount");
+        if ApprovalLimit < SampleRequest."Total Amount" then
+            Error('You can not approve it');
+    end;
+
+    procedure CheckRequestOwnership(SampleRequest: Record "Sample Request Header")
+    begin
+        if SampleRequest."Requested By" = UserId() then
+            Error('You cannot approve your own sample request');
+    end;
+
+    procedure MarkAsShipped(var SampleRequest: Record "Sample Request Header")
+    begin
+        if SampleRequest.Status <> SampleRequest.Status::Approved then
+            Error('Only approved requests can be shipped');
+
+        SampleRequest.TestField("Tracking No.");
+
+        SampleRequest.Status := SampleRequest.Status::Shipped;
+        SampleRequest."Shipped Date" := WorkDate();
+        SampleRequest.Modify(true);
+    end;
+
+    procedure ReopenRequest(var SampleRequest: Record "Sample Request Header")
+    begin
+        if not (SampleRequest.Status in [SampleRequest.Status::"Pending Approval",
+                                         SampleRequest.Status::Approved,
+                                         SampleRequest.Status::Rejected]) then
+            Error('Only Pending Approval, Approved and Rejected requests can be reopened.');
+
+        SampleRequest.Status := SampleRequest.Status::Open;
+        SampleRequest."Approved By" := '';
+        SampleRequest."Approved Date" := 0D;
+        SampleRequest.Modify(true);
+    end;
+
+    procedure CheckOpenRequest(var SampleRequest: Record "Sample Request Header")
+    begin
+        if SampleRequest.Status <> SampleRequest.Status::Open then
+            Error('Sample request can be changed only if status is Open');
+
+    end;
+
+    procedure Cancel(var SampleRequest: Record "Sample Request Header")
+    var
+        CancelQst: Label 'Do you want to cancel sample request %1?', Comment = '%1 = request no.';
+    begin
+        if not (SampleRequest.Status in [SampleRequest.Status::Open,
+                                        SampleRequest.Status::"Pending Approval",
+                                        SampleRequest.Status::Approved]) then
+            Error('Only open, pending or approved requests can be cancelled. The current status is %1.', SampleRequest.Status);
+
+        if GuiAllowed() then
+            if not Confirm(CancelQst, false, SampleRequest."No.") then
+                exit;
+
+        SampleRequest.Status := SampleRequest.Status::Canelled;
+        SampleRequest.Modify(true);
+    end;
+
     procedure Submit(var SampleRequest: Record "Sample Request Header")
     begin
         SampleRequest.TestField(Status, SampleRequest.Status::Open);
@@ -110,5 +183,70 @@ codeunit 50100 "Sample Request Mgt."
         CheckMaxRequestsPerPeriod(SampleRequest);
         CheckApprovalLimit(SampleRequest);
         SampleRequest.Modify(true);
+    end;
+
+    procedure Approve(var SampleRequest: Record "Sample Request Header")
+    begin
+        CheckApprovalLevel(SampleRequest);
+        CheckRequestOwnership(SampleRequest);
+        CheckLimit(SampleRequest);
+
+        SampleRequest.Status := SampleRequest.Status::Approved;
+        SampleRequest."Approved By" := CopyStr(UserId, 1, MaxStrLen(SampleRequest."Approved By"));
+        SampleRequest."Approved Date" := WorkDate();
+        SampleRequest.Modify(true);
+    end;
+
+    procedure Reject(var SampleRequest: Record "Sample Request Header")
+    begin
+        CheckApprovalLevel(SampleRequest);
+        SampleRequest.TestField("Rejection Reason");
+
+        SampleRequest.Status := SampleRequest.Status::Rejected;
+        SampleRequest.Modify(true);
+    end;
+
+    procedure DeleteRequest(var SampleRequest: Record "Sample Request Header")
+    begin
+        if not (SampleRequest.Status in [SampleRequest.Status::Open,
+                                        SampleRequest.Status::Canelled]) then
+            Error('Only Open or Cancelled requests can be deleted');
+    end;
+
+    [EventSubscriber(ObjectType::Table, Database::Customer, 'OnBeforeDeleteEvent', '', false, false)]
+    local procedure OnBeforeDeleteCustomer(var Rec: Record Customer; RunTrigger: Boolean)
+    var
+        SampleRequest: Record "Sample Request Header";
+    begin
+        if Rec.IsTemporary() then
+            exit;
+
+        SampleRequest.SetRange("Customer No.", Rec."No.");
+        SampleRequest.SetFilter(Status, '%1|%2|%3',
+            SampleRequest.Status::Open,
+            SampleRequest.Status::"Pending Approval",
+            SampleRequest.Status::Approved);
+        if SampleRequest.FindFirst() then
+            Error('Customer %1 cannot be deleted because it is on sample request %2.', Rec."No.", SampleRequest."No.");
+    end;
+
+    [EventSubscriber(ObjectType::Table, Database::Item, 'OnBeforeDeleteEvent', '', false, false)]
+    local procedure OnBeforeDeleteItem(var Rec: Record Item; RunTrigger: Boolean)
+    var
+        SampleRequestLine: Record "Sample Request Line";
+        SampleRequest: Record "Sample Request Header";
+    begin
+        if Rec.IsTemporary() then
+            exit;
+
+        SampleRequestLine.SetRange("Item No.", Rec."No.");
+        if SampleRequestLine.FindSet() then
+            repeat
+                SampleRequest.Get(SampleRequestLine."Document No.");
+                if SampleRequest.Status in [SampleRequest.Status::Open,
+                                            SampleRequest.Status::"Pending Approval",
+                                            SampleRequest.Status::Approved] then
+                    Error('Item %1 cannot be deleted because it is on sample request %2.', Rec."No.", SampleRequest."No.");
+            until SampleRequestLine.Next() = 0;
     end;
 }
