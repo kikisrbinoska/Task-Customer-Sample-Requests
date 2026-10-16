@@ -21,25 +21,15 @@ table 50101 "Sample Request Line"
 
             trigger OnValidate()
             var
-                ItemRec: Record Item;
+                Item: Record Item;
+                SampleRequestMgt: Codeunit "Sample Request Mgt.";
             begin
-                if "Item No." = '' then begin
-                    Description := '';
-                    "Unit of Measure Code" := '';
-                    "Unit Price" := 0;
-                    exit;
-                end;
-                ItemRec.Get("Item No.");
-                ItemRec.TestField(Blocked, false);
-                if not ItemRec."Sample Allowed" then
-                    Error('Item %1 is not allowed for sample requests.', "Item No.");
-                Description := ItemRec.Description;
-                "Unit of Measure Code" := ItemRec."Base Unit of Measure";
-                "Unit Price" := ItemRec."Unit Price";
-                if Quantity <> 0 then
-                    Validate(Quantity)
-                else
-                    UpdateLineAmount();
+                SampleRequestMgt.CheckOpenRequest();
+                Item.Get(Rec);
+                Item.TestField("Sample Allowed", true);
+                Item.TestField(Blocked, false);
+                Item.Description =
+                 
             end;
         }
         field(4; Description; Text[100])
@@ -60,7 +50,7 @@ table 50101 "Sample Request Line"
             trigger OnValidate()
             var
                 SampleRequestMgt: Codeunit "Sample Request Mgt.";
-=            begin
+-               begin
                 if "Item No." <> '' then
                     SampleRequestMgt.CheckQuantity("Item No.", Quantity);
                 UpdateLineAmount();
