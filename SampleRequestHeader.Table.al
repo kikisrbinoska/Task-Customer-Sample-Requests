@@ -30,22 +30,20 @@ table 50100 "Sample Request Header"
             trigger OnValidate()
             var
                 CustomerRec: Record Customer;
-                SampleRequestLine: Record "Sample Request Line";
-                CustomerBlockedErr: Label 'Customer is blocked with status %1.', Comment = '%1 = blocked status';
+                SampleRequestMgt: Codeunit "Sample Request Mgt.";
             begin
-                if "Customer No." <> xRec."Customer No." then begin
-                    SampleRequestLine.SetRange("Document No.", "No.");
-                    if not SampleRequestLine.IsEmpty() then
-                        Error('');
-                end;
+                SampleRequestMgt.CheckOpenRequest(Rec);
+                if "Customer No." <> xRec."Customer No." then
+                    SampleRequestMgt.CheckNoLinesExist(Rec);
 
                 if "Customer No." = '' then begin
                     "Customer Name" := '';
                     exit;
                 end;
+
+                SampleRequestMgt.CheckNotBlockedCustomer("Customer No.");
+
                 CustomerRec.Get("Customer No.");
-                if CustomerRec.Blocked <> CustomerRec.Blocked::" " then
-                    Error(CustomerBlockedErr, CustomerRec.Blocked);
                 "Customer Name" := CustomerRec.Name;
             end;
         }
@@ -64,7 +62,9 @@ table 50100 "Sample Request Header"
             trigger OnValidate()
             var
                 MailMngt: Codeunit "Mail Management";
+                SampleRequestMgt: Codeunit "Sample Request Mgt.";
             begin
+                SampleRequestMgt.CheckOpenRequest(Rec);
                 if "Contact Email" = '' then
                     exit;
                 MailMngt.ValidateEmailAddressField("Contact Email");
@@ -74,11 +74,25 @@ table 50100 "Sample Request Header"
         {
             DataClassification = CustomerContent;
             Caption = 'Project';
+
+            trigger OnValidate()
+            var
+                SampleRequestMgt: Codeunit "Sample Request Mgt.";
+            begin
+                SampleRequestMgt.CheckOpenRequest(Rec);
+            end;
         }
         field(6; "Request Date"; Date)
         {
             DataClassification = CustomerContent;
             Caption = 'Request Date';
+
+            trigger OnValidate()
+            var
+                SampleRequestMgt: Codeunit "Sample Request Mgt.";
+            begin
+                SampleRequestMgt.CheckOpenRequest(Rec);
+            end;
         }
         field(7; "Status"; Enum "Sample Request Status")
         {
@@ -185,8 +199,13 @@ table 50100 "Sample Request Header"
     end;
 
     trigger OnDelete()
+    var
+        SampleRequestMgt: Codeunit "Sample Request Mgt.";
+        SampleRequestLine: Record "Sample Request Line";
     begin
-
+        SampleRequestMgt.DeleteRequest(Rec);
+        SampleRequestLine.SetRange("Document No.", "No.");
+        SampleRequestLine.DeleteAll(true);
     end;
 
     trigger OnRename()

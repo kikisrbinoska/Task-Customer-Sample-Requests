@@ -5,7 +5,7 @@ codeunit 50100 "Sample Request Mgt."
 
     end;
 
-    procedure CheckNotBlockedCustomer(CustomerNo: Code[20])
+    procedure CheckNotBlockedCustomer(CustomerNo: Code[20])//need
     var
         Customer: Record Customer;
     begin
@@ -57,7 +57,15 @@ codeunit 50100 "Sample Request Mgt."
             Error('Sample request %1 has no lines and can not be submited', SampleRequest."No.");
     end;
 
-    // R5
+    procedure CheckNoLinesExist(var SampleRequest: Record "Sample Request Header")
+    var
+        SampleRequestLine: Record "Sample Request Line";
+    begin
+        SampleRequestLine.SetRange("Document No.", SampleRequest."No.");
+        if not SampleRequestLine.IsEmpty() then
+            Error('Sample request already has lines');
+    end;
+
     procedure CheckMaxRequestsPerPeriod(SampleRequest: Record "Sample Request Header")
     var
         SampleRequestSetup: Record "Sample Request Setup";
