@@ -21,9 +21,9 @@ enum 50100 "Sample Request Status"
     {
         Caption = 'Shipped';
     }
-    value(5; "Canelled")
+    value(5; "Canceled")
     {
-        Caption = 'Cancelled';
+        Caption = 'Canceled';
     }
 
 }

@@ -5,23 +5,25 @@ codeunit 50100 "Sample Request Mgt."
 
     end;
 
-    procedure CheckNotBlockedCustomer(CustomerNo: Code[20])//need
+    procedure CheckNotBlockedCustomer(CustomerNo: Code[20])
     var
         Customer: Record Customer;
+        CustomerBlockedErr: Label 'Customer %1 is blocked with status %2, chose another costumer or try to unblock it', Comment = '%1 = customer no., %2 = value of the Blocked field';
     begin
         Customer.Get(CustomerNo);
         if Customer.Blocked <> Customer.Blocked::" " then
-            Error('Customer %1 is blocked with status %2.', CustomerNo, Customer.Blocked);
+            Error(CustomerBlockedErr, CustomerNo, Customer.Blocked);
     end;
 
     procedure CheckItemAllowed(ItemNo: Code[20])
     var
         Item: Record Item;
+        ItemNotAllowedErr: Label 'Item %1 is not allowed, Sample Allowed need to be turned on or try to chose another item', Comment = '%1 = item no.';
     begin
         Item.Get(ItemNo);
         Item.TestField(Blocked, false);
         if not Item."Sample Allowed" then
-            Error('Item %1 is not allowed', ItemNo);
+            Error(ItemNotAllowedErr, ItemNo);
     end;
 
     procedure GetMaxSampleQuantity(ItemNo: Code[20]): Decimal
@@ -39,40 +41,47 @@ codeunit 50100 "Sample Request Mgt."
     procedure CheckQuantity(ItemNo: Code[20]; Quantity: Decimal)
     var
         MaxQuantity: Decimal;
+        QuantityIsNotPositiveErr: Label 'The quantity must be greater than 0. Enter a positive quantity.';
+        QuantityIsAboveMaxErr: Label 'The quantity cannot be more than %1 for item %2. Enter a quantity of %1 or less.', Comment = '%1 = maximum sample quantity, %2 = item no.';
+
+        QuantityNotAllowedErr: Label 'Quantity can not be more than %1 for %2', Comment = '%1 = max quantity., %2 = value of the item no.';
     begin
         if Quantity <= 0 then
-            Error('Quantity need to be grater than 0');
+            Error(QuantityIsNotPositiveErr);
         MaxQuantity := GetMaxSampleQuantity(ItemNo);
         if (MaxQuantity > 0) and (Quantity > MaxQuantity) then
-            Error('Quantity can not be more than %1 for %2', MaxQuantity, ItemNo);
-
+            Error(QuantityIsAboveMaxErr, MaxQuantity, ItemNo);
     end;
 
     procedure CheckLines(var SampleRequest: Record "Sample Request Header")
     var
         SampleRequestLine: Record "Sample Request Line";
+        NoLinesErr: Label 'Sample request %1 has no lines. Add at least one line before you submit it.', Comment = '%1 = sample request no.';
+        LineWithoutItemErr: Label 'Line %1 on sample request %2 has no item. Enter an item or delete the line.', Comment = '%1 = line no., %2 = sample request no.';
+        LineWithoutQuantityErr: Label 'Item %1 on sample request %2 has no quantity. Enter a quantity above 0.', Comment = '%1 = item no., %2 = sample request no.';
     begin
         SampleRequestLine.SetRange("Document No.", SampleRequest."No.");
         if SampleRequestLine.IsEmpty() then
-            Error('Sample request %1 has no lines and can not be submited', SampleRequest."No.");
+            Error(NoLinesErr);
 
         SampleRequestLine.SetRange("Item No.", '');
         if SampleRequestLine.FindFirst() then
-            Error('Line %1 on sample request %2 has no item. Enter an item or delete the line.', SampleRequestLine."Line No.", SampleRequest."No.");
+            Error(LineWithoutItemErr, SampleRequestLine."Line No.", SampleRequest."No.");
 
         SampleRequestLine.SetRange("Item No.");
         SampleRequestLine.SetFilter(Quantity, '<=0');
         if SampleRequestLine.FindFirst() then
-            Error('Item %1 on sample request %2 has no quantity. Enter a quantity above 0.', SampleRequestLine."Item No.", SampleRequest."No.");
+            Error(LineWithoutQuantityErr, SampleRequestLine."Item No.", SampleRequest."No.");
     end;
 
     procedure CheckNoLinesExist(var SampleRequest: Record "Sample Request Header")
     var
         SampleRequestLine: Record "Sample Request Line";
+        LinesExistErr: Label 'You cannot change the customer on sample request %1 because it already has lines. Delete the lines first.', Comment = '%1 = sample request no.';
     begin
         SampleRequestLine.SetRange("Document No.", SampleRequest."No.");
         if not SampleRequestLine.IsEmpty() then
-            Error('Sample request already has lines');
+            Error(LinesExistErr);
     end;
 
     procedure CheckMaxRequestsPerPeriod(SampleRequest: Record "Sample Request Header")
@@ -92,7 +101,7 @@ codeunit 50100 "Sample Request Mgt."
 
         OtherRequest.SetRange("Customer No.", SampleRequest."Customer No.");
         OtherRequest.SetRange("Request Date", StartPeriod, WorkDate());
-        OtherRequest.SetFilter(Status, '<>%1&<>%2', OtherRequest.Status::Rejected, OtherRequest.Status::Canelled);
+        OtherRequest.SetFilter(Status, '<>%1&<>%2', OtherRequest.Status::Rejected, OtherRequest.Status::Canceled);
         OtherRequest.SetFilter("No.", '<>%1', SampleRequest."No.");
 
         RequestCount := OtherRequest.Count();
@@ -110,32 +119,31 @@ codeunit 50100 "Sample Request Mgt."
         exit(0);
     end;
 
-    procedure CheckApprovalLevel(var SampleRequest: Record "Sample Request Header")
-    begin
-        if SampleRequest.Status <> SampleRequest.Status::"Pending Approval" then
-            Error('Only requests with status Pending Approval can be approved or rejected. The current status is %1.', SampleRequest.Status);
-    end;
-
     procedure CheckLimit(var SampleRequest: Record "Sample Request Header")
     var
         ApprovalLimit: Decimal;
+        AboveLimitErr: Label 'The Total Amount is above limit';
     begin
         ApprovalLimit := GetApprovalLimit();
         SampleRequest.CalcFields("Total Amount");
         if SampleRequest."Total Amount" > ApprovalLimit then
-            Error('Above limit');
+            Error(AboveLimitErr);
     end;
 
     procedure CheckRequestOwnership(SampleRequest: Record "Sample Request Header")
+    var
+        OwnRequestErr: Label 'You cannot approve or reject your own sample request %1. Ask another user with a high enough approval limit.', Comment = '%1 = sample request no.';
     begin
         if SampleRequest."Requested By" = UserId() then
-            Error('You cannot approve your own sample request');
+            Error(OwnRequestErr);
     end;
 
     procedure MarkAsShipped(var SampleRequest: Record "Sample Request Header")
+    var
+        NotApprovedErr: Label 'Only approved requests can be shipped. Sample request %1 has status %2. Submit and approve it first.', Comment = '%1 = sample request no., %2 = current status';
     begin
         if SampleRequest.Status <> SampleRequest.Status::Approved then
-            Error('Request is not approved');
+            Error(NotApprovedErr);
         SampleRequest.TestField("Tracking No.");
 
         SampleRequest."Shipped Date" := WorkDate();
@@ -143,16 +151,17 @@ codeunit 50100 "Sample Request Mgt."
     end;
 
     procedure ReopenRequest(var SampleRequest: Record "Sample Request Header")
+    var
+        CannotReopenErr: Label 'Only Pending Approval, Approved and Rejected requests can be reopened. Sample request %1 has status %2.', Comment = '%1 = sample request no., %2 = current status';
     begin
         if not (SampleRequest.Status in [SampleRequest.Status::"Pending Approval",
-                                         SampleRequest.Status::Approved,
-                                         SampleRequest.Status::Rejected]) then
-            Error('Only Pending Approval, Approved and Rejected requests can be reopened.');
+                                        SampleRequest.Status::Approved,
+                                        SampleRequest.Status::Rejected]) then
+            Error(CannotReopenErr, SampleRequest."No.", SampleRequest.Status);
 
         SampleRequest."Approved By" := '';
         SampleRequest."Approved Date" := 0D;
         SetStatus(SampleRequest, SampleRequest.Status::Open);
-        SampleRequest.Modify(true);
     end;
 
     procedure Reject(var SampleRequest: Record "Sample Request Header")
@@ -165,26 +174,29 @@ codeunit 50100 "Sample Request Mgt."
     end;
 
     procedure CheckOpenRequest(var SampleRequest: Record "Sample Request Header")
+    var
+        NotOpenRequestErr: Label 'Sample request can be changed only if status is Open';
     begin
         if SampleRequest.Status <> SampleRequest.Status::Open then
-            Error('Sample request can be changed only if status is Open');
+            Error(NotOpenRequestErr);
 
     end;
 
     procedure Cancel(var SampleRequest: Record "Sample Request Header")
     var
         CancelQst: Label 'Do you want to cancel sample request %1?', Comment = '%1 = request no.';
+        CannotCancelErr: Label 'Only Open, Pending Approval and Approved requests can be cancelled. Sample request %1 has status %2.', Comment = '%1 = sample request no., %2 = current status';
     begin
         if not (SampleRequest.Status in [SampleRequest.Status::Open,
                                         SampleRequest.Status::"Pending Approval",
                                         SampleRequest.Status::Approved]) then
-            Error('Only open, pending or approved requests can be cancelled. The current status is %1.', SampleRequest.Status);
+            Error(CannotCancelErr, SampleRequest.Status);
 
         if GuiAllowed() then
             if not Confirm(CancelQst, false, SampleRequest."No.") then
                 exit;
 
-        SetStatus(SampleRequest, SampleRequest.Status::Canelled);
+        SetStatus(SampleRequest, SampleRequest.Status::Canceled);
     end;
 
     procedure Submit(var SampleRequest: Record "Sample Request Header")
@@ -216,16 +228,20 @@ codeunit 50100 "Sample Request Mgt."
     end;
 
     procedure CheckStatusPendingApproval(SampleRequest: Record "Sample Request Header")
+    var
+        NotPendingApprovalErr: Label 'Only requests with status Pending Approval can be approved or rejected. Sample request %1 has status %2.', Comment = '%1 = sample request no., %2 = current status';
     begin
         if SampleRequest.Status <> SampleRequest.Status::"Pending Approval" then
-            Error('Only requests with status Pending Approval can be approved or rejected. The current status is %1.', SampleRequest.Status);
+            Error(NotPendingApprovalErr, SampleRequest.Status);
     end;
 
     procedure DeleteRequest(var SampleRequest: Record "Sample Request Header")
+    var
+        CannotDeleteErr: Label 'Only Open or Cancelled requests can be deleted. Sample request %1 has status %2. Cancel it first.', Comment = '%1 = sample request no., %2 = current status';
     begin
         if not (SampleRequest.Status in [SampleRequest.Status::Open,
-                                        SampleRequest.Status::Canelled]) then
-            Error('Only Open or Cancelled requests can be deleted');
+                                        SampleRequest.Status::Canceled]) then
+            Error(CannotDeleteErr);
     end;
 
     local procedure SetStatus(var SampleRequest: Record "Sample Request Header"; NewStatus: Enum "Sample Request Status")
@@ -247,6 +263,7 @@ codeunit 50100 "Sample Request Mgt."
     local procedure OnBeforeDeleteCustomer(var Rec: Record Customer; RunTrigger: Boolean)
     var
         SampleRequest: Record "Sample Request Header";
+        CustomerOnRequestErr: Label 'You cannot delete customer %1 because it is on sample request %2. Cancel or finish that request first.', Comment = '%1 = customer no., %2 = sample request no.';
     begin
         if Rec.IsTemporary() then
             exit;
@@ -257,7 +274,7 @@ codeunit 50100 "Sample Request Mgt."
             SampleRequest.Status::"Pending Approval",
             SampleRequest.Status::Approved);
         if SampleRequest.FindFirst() then
-            Error('Customer %1 cannot be deleted because it is on sample request %2.', Rec."No.", SampleRequest."No.");
+            Error(CustomerOnRequestErr, Rec."No.", SampleRequest."No.");
     end;
 
     [EventSubscriber(ObjectType::Table, Database::Item, 'OnBeforeDeleteEvent', '', false, false)]
@@ -265,6 +282,7 @@ codeunit 50100 "Sample Request Mgt."
     var
         SampleRequestLine: Record "Sample Request Line";
         SampleRequest: Record "Sample Request Header";
+        ItemOnRequestErr: Label 'You cannot delete item %1 because it is on sample request %2. Cancel or finish that request first.', Comment = '%1 = item no., %2 = sample request no.';
     begin
         if Rec.IsTemporary() then
             exit;
@@ -276,7 +294,7 @@ codeunit 50100 "Sample Request Mgt."
                 if SampleRequest.Status in [SampleRequest.Status::Open,
                                             SampleRequest.Status::"Pending Approval",
                                             SampleRequest.Status::Approved] then
-                    Error('Item %1 cannot be deleted because it is on sample request %2.', Rec."No.", SampleRequest."No.");
+                    Error(ItemOnRequestErr, Rec."No.", SampleRequest."No.");
             until SampleRequestLine.Next() = 0;
     end;
 

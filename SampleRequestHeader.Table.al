@@ -96,7 +96,7 @@ table 50100 "Sample Request Header"
                 SampleRequestMgt.CheckOpenRequest(Rec);
             end;
         }
-        field(7; "Status"; Enum "Sample Request Status")
+        field(7; Status; Enum "Sample Request Status")
         {
             DataClassification = CustomerContent;
             Caption = 'Status';
@@ -194,25 +194,14 @@ table 50100 "Sample Request Header"
         "Requested By" := CopyStr(UserId(), 1, MaxStrLen("Requested By"));
     end;
 
-
-    trigger OnModify()
-    begin
-
-    end;
-
     trigger OnDelete()
     var
-        SampleRequestMgt: Codeunit "Sample Request Mgt.";
         SampleRequestLine: Record "Sample Request Line";
+        SampleRequestMgt: Codeunit "Sample Request Mgt.";
     begin
         SampleRequestMgt.DeleteRequest(Rec);
         SampleRequestLine.SetRange("Document No.", "No.");
-        SampleRequestLine.DeleteAll(true);
-    end;
-
-    trigger OnRename()
-    begin
-
+        SampleRequestLine.DeleteAll(false);
     end;
 
 }
