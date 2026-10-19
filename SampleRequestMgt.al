@@ -55,6 +55,15 @@ codeunit 50100 "Sample Request Mgt."
         SampleRequestLine.SetRange("Document No.", SampleRequest."No.");
         if SampleRequestLine.IsEmpty() then
             Error('Sample request %1 has no lines and can not be submited', SampleRequest."No.");
+
+        SampleRequestLine.SetRange("Item No.", '');
+        if SampleRequestLine.FindFirst() then
+            Error('Line %1 on sample request %2 has no item. Enter an item or delete the line.', SampleRequestLine."Line No.", SampleRequest."No.");
+
+        SampleRequestLine.SetRange("Item No.");
+        SampleRequestLine.SetFilter(Quantity, '<=0');
+        if SampleRequestLine.FindFirst() then
+            Error('Item %1 on sample request %2 has no quantity. Enter a quantity above 0.', SampleRequestLine."Item No.", SampleRequest."No.");
     end;
 
     procedure CheckNoLinesExist(var SampleRequest: Record "Sample Request Header")
@@ -276,8 +285,9 @@ codeunit 50100 "Sample Request Mgt."
         SampleRequestHeader: Record "Sample Request Header";
     begin
         SampleRequestHeader.Init();
-        SampleRequestHeader.Validate("Customer No.", CustomerNo);
         SampleRequestHeader.Insert(true);
+        SampleRequestHeader.Validate("Customer No.", CustomerNo);
+        SampleRequestHeader.Modify(true);
         Page.Run(Page::"Sample Requests Card", SampleRequestHeader);
     end;
 }

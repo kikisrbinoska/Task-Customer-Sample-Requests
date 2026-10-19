@@ -26,20 +26,20 @@ pageextension 50110 "Customer Card Extension" extends "Customer Card"
                 RunObject = Page "Sample Requests List";
                 RunPageLink = "Customer No." = field("No.");
             }
-            action("New Sample Request")
+            action(NewSampleRequest)
             {
                 ApplicationArea = All;
                 Caption = 'New Sample Request';
+                ToolTip = 'Create a new sample request for this customer.';
                 Image = NewDocument;
+                Promoted = true;
+                PromotedCategory = Process;
 
                 trigger OnAction()
                 var
-                    SampleRequest: Record "Sample Request Header";
+                    SampleRequestMgt: Codeunit "Sample Request Mgt.";
                 begin
-                    SampleRequest.Init();
-                    SampleRequest.Validate("Customer No.", Rec."No.");
-                    SampleRequest.Insert(true);
-                    Page.Run(Page::"Sample Requests Card", SampleRequest);
+                    SampleRequestMgt.CreateRequestForCustomer(Rec."No.");
                 end;
             }
         }
