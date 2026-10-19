@@ -14,7 +14,7 @@ page 50101 "Sample Requests List"
     {
         area(Content)
         {
-            repeater(GroupName)
+            repeater(Samples)
             {
                 field("No."; Rec."No.")
                 {
@@ -52,6 +52,30 @@ page 50101 "Sample Requests List"
                     Caption = 'Total Amount';
                     ToolTip = 'Specifies the total amount of the sample request.';
                 }
+            }
+        }
+    }
+    actions
+    {
+        area(Processing)
+        {
+            action(Print)
+            {
+                ApplicationArea = All;
+                Caption = 'Print';
+                ToolTip = 'Print';
+                Image = Print;
+                Promoted = true;
+                PromotedCategory = Process;
+
+                trigger OnAction()
+                var
+                    SampleRequestHeader: Record "Sample Request Header";
+                begin
+                    CurrPage.SetSelectionFilter(SampleRequestHeader);
+                    Report.Run(Report::"Report Sample Request", true, false, SampleRequestHeader);
+                end;
+
             }
         }
     }

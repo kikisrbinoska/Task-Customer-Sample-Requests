@@ -210,6 +210,24 @@ page 50104 "Sample Requests Card"
                     CurrPage.Update(false);
                 end;
             }
+            action(Print)
+            {
+                ApplicationArea = All;
+                Caption = 'Print';
+                ToolTip = 'Print';
+                Image = Print;
+                Promoted = true;
+                PromotedCategory = Process;
+
+                trigger OnAction()
+                var
+                    SampleRequestHeader: Record "Sample Request Header";
+                begin
+                    SampleRequestHeader := Rec;
+                    SampleRequestHeader.SetRecFilter();
+                    Report.Run(Report::"Report Sample Request", true, false, SampleRequestHeader);
+                end;
+            }
         }
     }
 
