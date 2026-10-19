@@ -1,6 +1,8 @@
 table 50100 "Sample Request Header"
 {
     DataClassification = CustomerContent;
+    DrillDownPageId = "Sample Requests List";
+    LookupPageId = "Sample Requests List";
 
     fields
     {

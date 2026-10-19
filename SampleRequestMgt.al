@@ -270,4 +270,14 @@ codeunit 50100 "Sample Request Mgt."
                     Error('Item %1 cannot be deleted because it is on sample request %2.', Rec."No.", SampleRequest."No.");
             until SampleRequestLine.Next() = 0;
     end;
+
+    procedure CreateRequestForCustomer(CustomerNo: Code[20])
+    var
+        SampleRequestHeader: Record "Sample Request Header";
+    begin
+        SampleRequestHeader.Init();
+        SampleRequestHeader.Validate("Customer No.", CustomerNo);
+        SampleRequestHeader.Insert(true);
+        Page.Run(Page::"Sample Requests Card", SampleRequestHeader);
+    end;
 }

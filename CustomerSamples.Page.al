@@ -8,7 +8,7 @@ page 50107 "Customer Samples"
     {
         area(Content)
         {
-            group(GroupName)
+            group(Samples)
             {
                 field("Open Sample Requests"; Rec."Open Sample Requests")
                 {
