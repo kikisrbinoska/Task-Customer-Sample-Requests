@@ -42,11 +42,7 @@ page 50106 "Sample Request Setup Card"
     }
     trigger OnOpenPage()
     begin
-        Rec.Reset();
-        if not Rec.Get() then begin
-            Rec.Init();
-            Rec.Insert();
-        end
+        Rec.InsertIfNotExist();
     end;
 
 

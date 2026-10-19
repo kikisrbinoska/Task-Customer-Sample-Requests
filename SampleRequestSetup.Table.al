@@ -1,12 +1,13 @@
 table 50103 "Sample Request Setup"
 {
     DataClassification = CustomerContent;
+    Caption = 'Sample Request Setup';
 
     fields
     {
         field(1; "Primary Key"; Code[10])
         {
-
+            Caption = 'Primary Key';
         }
         field(2; "Sample Request Nos."; Code[20])
         {
@@ -27,6 +28,13 @@ table 50103 "Sample Request Setup"
         field(5; "Request Period"; DateFormula)
         {
             Caption = 'Request Period';
+
+            trigger OnValidate()
+            begin
+                if CalcDate("Request Period", WorkDate()) > WorkDate() then
+                    Error('Period Must not be negative');
+
+            end;
         }
 
     }
@@ -39,24 +47,16 @@ table 50103 "Sample Request Setup"
         }
     }
 
-
-    trigger OnInsert()
+    procedure InsertIfNotExist()
     begin
+        Reset();
+        if not Get() then begin
+            Init();
+            Insert();
+        end;
     end;
 
-    trigger OnModify()
-    begin
 
-    end;
 
-    trigger OnDelete()
-    begin
-
-    end;
-
-    trigger OnRename()
-    begin
-
-    end;
 
 }

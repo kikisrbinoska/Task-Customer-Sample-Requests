@@ -77,6 +77,7 @@ codeunit 50100 "Sample Request Mgt."
         SampleRequestSetup.Get();
         if SampleRequestSetup."Max. Requests per Period" = 0 then
             exit;
+        SampleRequestSetup.TestField("Request Period");
 
         StartPeriod := CalcDate(SampleRequestSetup."Request Period", WorkDate());
 

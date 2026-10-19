@@ -17,19 +17,41 @@ table 50101 "Sample Request Line"
         field(3; "Item No."; Code[20])
         {
             Caption = 'Item No.';
+            DataClassification = CustomerContent;
             TableRelation = Item where("Sample Allowed" = const(true), Blocked = const(false));
 
             trigger OnValidate()
             var
                 Item: Record Item;
+                SampleRequestHeader: Record "Sample Request Header";
                 SampleRequestMgt: Codeunit "Sample Request Mgt.";
             begin
-                SampleRequestMgt.CheckOpenRequest();
-                Item.Get(Rec);
-                Item.TestField("Sample Allowed", true);
-                Item.TestField(Blocked, false);
-                Item.Description =
-                 
+                SampleRequestHeader.Get("Document No.");
+                SampleRequestMgt.CheckOpenRequest(SampleRequestHeader);
+
+                if "Item No." = xRec."Item No." then
+                    exit;
+
+                if "Item No." = '' then begin
+                    Description := '';
+                    "Unit of Measure Code" := '';
+                    "Unit Price" := 0;
+                    UpdateLineAmount();
+                    exit;
+                end;
+
+                SampleRequestMgt.CheckItemAllowed("Item No.");
+                Item.Get("Item No.");
+
+                Description := Item.Description;
+                "Unit of Measure Code" := Item."Base Unit of Measure";
+                "Unit Price" := Item."Unit Price";
+
+                If Quantity <> 0 then
+                    Validate(Quantity)
+                else
+                    UpdateLineAmount();
+
             end;
         }
         field(4; Description; Text[100])
@@ -45,12 +67,17 @@ table 50101 "Sample Request Line"
         field(6; Quantity; Decimal)
         {
             Caption = 'Quantity';
+            DataClassification = CustomerContent;
             DecimalPlaces = 0 : 5;
 
             trigger OnValidate()
             var
+                SampleRequestHeader: Record "Sample Request Header";
                 SampleRequestMgt: Codeunit "Sample Request Mgt.";
--               begin
+            begin
+                SampleRequestHeader.Get("Document No.");
+                SampleRequestMgt.CheckOpenRequest(SampleRequestHeader);
+
                 if "Item No." <> '' then
                     SampleRequestMgt.CheckQuantity("Item No.", Quantity);
                 UpdateLineAmount();
@@ -82,10 +109,6 @@ table 50101 "Sample Request Line"
     begin
         "Line Amount" := Round(Quantity * "Unit Price");
     end;
-
-
-
-
 
 
 }
