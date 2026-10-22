@@ -62,7 +62,7 @@ codeunit 50100 "Sample Request Mgt."
     begin
         SampleRequestLine.SetRange("Document No.", SampleRequest."No.");
         if SampleRequestLine.IsEmpty() then
-            Error(NoLinesErr);
+            Error(NoLinesErr, SampleRequest."No.");
 
         SampleRequestLine.SetRange("Item No.", '');
         if SampleRequestLine.FindFirst() then
@@ -190,7 +190,7 @@ codeunit 50100 "Sample Request Mgt."
         if not (SampleRequest.Status in [SampleRequest.Status::Open,
                                         SampleRequest.Status::"Pending Approval",
                                         SampleRequest.Status::Approved]) then
-            Error(CannotCancelErr, SampleRequest.Status);
+            Error(CannotCancelErr, SampleRequest."No.", SampleRequest.Status);
 
         if GuiAllowed() then
             if not Confirm(CancelQst, false, SampleRequest."No.") then
@@ -241,7 +241,7 @@ codeunit 50100 "Sample Request Mgt."
     begin
         if not (SampleRequest.Status in [SampleRequest.Status::Open,
                                         SampleRequest.Status::Canceled]) then
-            Error(CannotDeleteErr);
+            Error(CannotDeleteErr, SampleRequest."No.", SampleRequest.Status);
     end;
 
     local procedure SetStatus(var SampleRequest: Record "Sample Request Header"; NewStatus: Enum "Sample Request Status")
