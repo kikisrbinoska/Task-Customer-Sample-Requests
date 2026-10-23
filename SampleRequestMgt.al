@@ -81,7 +81,7 @@ codeunit 50100 "Sample Request Mgt."
     begin
         SampleRequestLine.SetRange("Document No.", SampleRequest."No.");
         if not SampleRequestLine.IsEmpty() then
-            Error(LinesExistErr);
+            Error(LinesExistErr, SampleRequest."No.");
     end;
 
     procedure CheckMaxRequestsPerPeriod(SampleRequest: Record "Sample Request Header")
@@ -135,7 +135,7 @@ codeunit 50100 "Sample Request Mgt."
         OwnRequestErr: Label 'You cannot approve or reject your own sample request %1. Ask another user with a high enough approval limit.', Comment = '%1 = sample request no.';
     begin
         if SampleRequest."Requested By" = UserId() then
-            Error(OwnRequestErr);
+            Error(OwnRequestErr, SampleRequest."No.");
     end;
 
     procedure MarkAsShipped(var SampleRequest: Record "Sample Request Header")
@@ -143,7 +143,7 @@ codeunit 50100 "Sample Request Mgt."
         NotApprovedErr: Label 'Only approved requests can be shipped. Sample request %1 has status %2. Submit and approve it first.', Comment = '%1 = sample request no., %2 = current status';
     begin
         if SampleRequest.Status <> SampleRequest.Status::Approved then
-            Error(NotApprovedErr);
+            Error(NotApprovedErr, SampleRequest."No.", SampleRequest.Status);
         SampleRequest.TestField("Tracking No.");
 
         SampleRequest."Shipped Date" := WorkDate();
@@ -232,7 +232,7 @@ codeunit 50100 "Sample Request Mgt."
         NotPendingApprovalErr: Label 'Only requests with status Pending Approval can be approved or rejected. Sample request %1 has status %2.', Comment = '%1 = sample request no., %2 = current status';
     begin
         if SampleRequest.Status <> SampleRequest.Status::"Pending Approval" then
-            Error(NotPendingApprovalErr, SampleRequest.Status);
+            Error(NotPendingApprovalErr, SampleRequest."No.", SampleRequest.Status);
     end;
 
     procedure DeleteRequest(var SampleRequest: Record "Sample Request Header")
