@@ -71,8 +71,18 @@ page 50101 "Sample Requests List"
                 trigger OnAction()
                 var
                     SampleRequestHeader: Record "Sample Request Header";
+                    NoFilter: Text;
                 begin
                     CurrPage.SetSelectionFilter(SampleRequestHeader);
+                    if SampleRequestHeader.FindSet() then
+                        repeat
+                            if NoFilter <> '' then
+                                NoFilter += '|';
+                            NoFilter += SampleRequestHeader."No.";
+                        until SampleRequestHeader.Next() = 0;
+
+                    SampleRequestHeader.Reset();
+                    SampleRequestHeader.SetFilter("No.", NoFilter);
                     Report.Run(Report::"Report Sample Request", true, false, SampleRequestHeader);
                 end;
 

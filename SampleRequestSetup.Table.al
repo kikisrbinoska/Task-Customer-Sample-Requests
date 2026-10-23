@@ -30,9 +30,11 @@ table 50103 "Sample Request Setup"
             Caption = 'Request Period';
 
             trigger OnValidate()
+            var
+                PeriodMustBeNegativeErr: Label 'Request Period must look back in time, e.g. -30D.';
             begin
                 if CalcDate("Request Period", WorkDate()) > WorkDate() then
-                    Error('Period Must not be negative');
+                    Error(PeriodMustBeNegativeErr);
 
             end;
         }

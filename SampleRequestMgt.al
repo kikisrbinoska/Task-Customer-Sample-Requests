@@ -101,7 +101,7 @@ codeunit 50100 "Sample Request Mgt."
 
         OtherRequest.SetRange("Customer No.", SampleRequest."Customer No.");
         OtherRequest.SetRange("Request Date", StartPeriod, WorkDate());
-        OtherRequest.SetFilter(Status, '<>%1&<>%2', OtherRequest.Status::Rejected, OtherRequest.Status::Canceled);
+        OtherRequest.SetFilter(Status, '<>%1&<>%2', OtherRequest.Status::Rejected, OtherRequest.Status::Cancelled);
         OtherRequest.SetFilter("No.", '<>%1', SampleRequest."No.");
 
         RequestCount := OtherRequest.Count();
@@ -196,7 +196,7 @@ codeunit 50100 "Sample Request Mgt."
             if not Confirm(CancelQst, false, SampleRequest."No.") then
                 exit;
 
-        SetStatus(SampleRequest, SampleRequest.Status::Canceled);
+        SetStatus(SampleRequest, SampleRequest.Status::Cancelled);
     end;
 
     procedure Submit(var SampleRequest: Record "Sample Request Header")
@@ -240,7 +240,7 @@ codeunit 50100 "Sample Request Mgt."
         CannotDeleteErr: Label 'Only Open or Cancelled requests can be deleted. Sample request %1 has status %2. Cancel it first.', Comment = '%1 = sample request no., %2 = current status';
     begin
         if not (SampleRequest.Status in [SampleRequest.Status::Open,
-                                        SampleRequest.Status::Canceled]) then
+                                        SampleRequest.Status::Cancelled]) then
             Error(CannotDeleteErr, SampleRequest."No.", SampleRequest.Status);
     end;
 

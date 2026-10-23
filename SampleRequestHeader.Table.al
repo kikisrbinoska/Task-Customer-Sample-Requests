@@ -185,7 +185,7 @@ table 50100 "Sample Request Header"
     begin
         if "No." = '' then begin
             SampleRequestSetup.Get();
-            SAmpleRequestSetup.TestField("Sample Request Nos.");
+            SampleRequestSetup.TestField("Sample Request Nos.");
             "No. Series" := SampleRequestSetup."Sample Request Nos.";
             "No." := NoSeries.GetNextNo("No. Series");
         end;

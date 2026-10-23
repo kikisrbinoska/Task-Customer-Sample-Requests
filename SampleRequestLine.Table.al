@@ -92,7 +92,7 @@ table 50101 "Sample Request Line"
         field(8; "Line Amount"; Decimal)
         {
             Caption = 'Line Amount';
-            AutoFormatType = 2;
+            AutoFormatType = 1;
             Editable = false;
         }
 
